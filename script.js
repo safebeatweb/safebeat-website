@@ -453,10 +453,22 @@ function runAlertSystem() {
 // Personalized diagnostic tab — login-gated, matching the same Firebase
 // Auth + Firestore logic as the SafeBeat Flutter app (same account,
 // same "users/{uid}" profile fields, same target-BPM/BMI/history math).
+//
+// Flow: a blurred diagnostic screen sits behind a centered overlay.
+//   - Not signed in -> overlay shows Login / Register tabs.
+//   - Login -> just authenticates, no profile step, straight to unlocked.
+//   - Register -> creates the account, then shows a one-time personal
+//     info step (age/height/weight/etc, same fields as the Flutter
+//     app's BodyInfoScreen) before unlocking.
+//   - Once unlocked, a gear button in the sidebar reopens the same
+//     personal info step at any time to edit/save.
 // ---------------------------------------------------------------------
 const diagAuthStatus = document.getElementById("diagnostic-auth-status")
-const diagLocked = document.getElementById("diagnostic-locked")
-const diagUnlocked = document.getElementById("diagnostic-unlocked")
+const diagContent = document.getElementById("diagnostic-content")
+const diagOverlay = document.getElementById("diagnostic-overlay")
+const authStep = document.getElementById("auth-step")
+const profileStep = document.getElementById("profile-step")
+const editProfileBtn = document.getElementById("edit-profile-btn")
 
 const tabLoginBtn = document.getElementById("tab-login")
 const tabRegisterBtn = document.getElementById("tab-register")
@@ -465,16 +477,15 @@ const registerForm = document.getElementById("register-form")
 const loginStatus = document.getElementById("login-status")
 const registerStatus = document.getElementById("register-status")
 
-const profileAge = document.getElementById("profile-age")
-const profileHeight = document.getElementById("profile-height")
-const profileWeight = document.getElementById("profile-weight")
-const profileRestingHr = document.getElementById("profile-resting-hr")
-const profileGender = document.getElementById("profile-gender")
-const profileActivity = document.getElementById("profile-activity")
-const profileSaveBtn = document.getElementById("profile-save")
-const profileFetchHrBtn = document.getElementById("profile-fetch-hr")
-const profileSaveStatus = document.getElementById("profile-save-status")
-const diagnosticLogoutBtn = document.getElementById("diagnostic-logout")
+const setupAge = document.getElementById("setup-age")
+const setupHeight = document.getElementById("setup-height")
+const setupWeight = document.getElementById("setup-weight")
+const setupRestingHr = document.getElementById("setup-resting-hr")
+const setupGender = document.getElementById("setup-gender")
+const setupActivity = document.getElementById("setup-activity")
+const setupFetchHrBtn = document.getElementById("setup-fetch-hr")
+const setupStatus = document.getElementById("setup-status")
+const setupFinishBtn = document.getElementById("setup-finish")
 
 const diagTargetBpm = document.getElementById("diag-target-bpm")
 const diagLiveBpm = document.getElementById("diag-live-bpm")
@@ -485,6 +496,7 @@ const diagStartStopBtn = document.getElementById("diag-start-stop")
 const diagHistoryList = document.getElementById("diagnostic-history-list")
 
 let currentUser = null
+let currentProfile = null
 let diagRunning = false
 let diagElapsedSeconds = 0
 let diagMaxBpmSeen = 0
@@ -492,6 +504,25 @@ let diagBpmReadings = []
 let diagSpo2Readings = []
 let diagIntervalId = null
 let historyUnsubscribe = null
+
+function showAuthStep() {
+  authStep.hidden = false
+  profileStep.hidden = true
+  diagOverlay.hidden = false
+  diagContent.classList.add("diagnostic-locked")
+}
+
+function showProfileStep() {
+  authStep.hidden = true
+  profileStep.hidden = false
+  diagOverlay.hidden = false
+  diagContent.classList.add("diagnostic-locked")
+}
+
+function showUnlocked() {
+  diagOverlay.hidden = true
+  diagContent.classList.remove("diagnostic-locked")
+}
 
 if (tabLoginBtn) {
   tabLoginBtn.addEventListener("click", () => {
@@ -512,6 +543,7 @@ if (tabLoginBtn) {
     event.preventDefault()
     loginStatus.textContent = "Signing in..."
     try {
+      // Login just authenticates — no profile step, straight to unlocked.
       await signInWithEmailAndPassword(auth, document.getElementById("login-email").value.trim(), document.getElementById("login-password").value)
       loginStatus.textContent = ""
       loginForm.reset()
@@ -536,6 +568,8 @@ if (tabLoginBtn) {
       })
       registerStatus.textContent = ""
       registerForm.reset()
+      // onAuthStateChanged below will detect the new user has no
+      // profile fields yet and route straight to the profile step.
     } catch (error) {
       registerStatus.textContent = error.message.includes("email-already-in-use")
         ? "That email is already registered — try logging in instead."
@@ -543,76 +577,84 @@ if (tabLoginBtn) {
     }
   })
 
-  diagnosticLogoutBtn.addEventListener("click", () => signOut(auth))
+  editProfileBtn.addEventListener("click", () => {
+    if (!currentUser) return
+    populateProfileStepFields(currentProfile || {})
+    showProfileStep()
+  })
+
+  setupFetchHrBtn.addEventListener("click", async () => {
+    const snapshot = await dbGet(ref(database, "HeartRate"))
+    if (snapshot.exists()) setupRestingHr.value = snapshot.val()
+  })
+
+  setupFinishBtn.addEventListener("click", async () => {
+    if (!currentUser) return
+    setupStatus.textContent = "Saving..."
+    try {
+      const profileData = {
+        age: setupAge.value,
+        height: `${setupHeight.value} cm`,
+        weight: `${setupWeight.value} kg`,
+        resting_heart_rate: setupRestingHr.value,
+        gender: setupGender.value,
+        activity_level: setupActivity.value
+      }
+      await updateDoc(doc(firestore, "users", currentUser.uid), profileData)
+      currentProfile = { ...currentProfile, ...profileData }
+      setupStatus.textContent = ""
+      showUnlocked()
+    } catch (error) {
+      setupStatus.textContent = "Could not save profile."
+    }
+  })
 
   onAuthStateChanged(auth, async (user) => {
     currentUser = user
 
     if (user) {
       diagAuthStatus.textContent = "Signed in"
-      diagLocked.hidden = true
-      diagUnlocked.hidden = false
-      await loadProfile()
+      editProfileBtn.hidden = false
+      const snapshot = await getDoc(doc(firestore, "users", user.uid))
+      currentProfile = snapshot.exists() ? snapshot.data() : {}
+
+      if (!currentProfile.age) {
+        // New/incomplete profile (fresh register) -> one-time setup step.
+        populateProfileStepFields(currentProfile)
+        showProfileStep()
+      } else {
+        showUnlocked()
+      }
+
       subscribeHistory()
     } else {
       diagAuthStatus.textContent = "Not signed in"
-      diagLocked.hidden = false
-      diagUnlocked.hidden = true
+      editProfileBtn.hidden = true
+      currentProfile = null
+      showAuthStep()
       stopDiagnosisTimer()
       if (historyUnsubscribe) historyUnsubscribe()
     }
   })
 }
 
-async function loadProfile() {
-  if (!currentUser) return
-  const snapshot = await getDoc(doc(firestore, "users", currentUser.uid))
-  if (!snapshot.exists()) return
-  const data = snapshot.data()
-
-  if (data.age) profileAge.value = data.age
-  if (data.resting_heart_rate) profileRestingHr.value = String(data.resting_heart_rate).replace(/[^0-9]/g, "")
-  if (data.gender) profileGender.value = data.gender
-  if (data.activity_level) profileActivity.value = data.activity_level
-
-  // height/weight are stored as "170 cm" / "65 kg" strings in the app, same split logic
-  if (data.height) profileHeight.value = String(data.height).split(" ")[0]
-  if (data.weight) profileWeight.value = String(data.weight).split(" ")[0]
-}
-
-if (profileSaveBtn) {
-  profileSaveBtn.addEventListener("click", async () => {
-    if (!currentUser) return
-    profileSaveStatus.textContent = "Saving..."
-    try {
-      await updateDoc(doc(firestore, "users", currentUser.uid), {
-        age: profileAge.value,
-        height: `${profileHeight.value} cm`,
-        weight: `${profileWeight.value} kg`,
-        resting_heart_rate: profileRestingHr.value,
-        gender: profileGender.value,
-        activity_level: profileActivity.value
-      })
-      profileSaveStatus.textContent = "Profile saved."
-      setTimeout(() => { profileSaveStatus.textContent = "" }, 2500)
-    } catch (error) {
-      profileSaveStatus.textContent = "Could not save profile."
-    }
-  })
-
-  profileFetchHrBtn.addEventListener("click", async () => {
-    const snapshot = await dbGet(ref(database, "HeartRate"))
-    if (snapshot.exists()) profileRestingHr.value = snapshot.val()
-  })
+function populateProfileStepFields(data) {
+  setupAge.value = data.age || ""
+  setupHeight.value = data.height ? String(data.height).split(" ")[0] : ""
+  setupWeight.value = data.weight ? String(data.weight).split(" ")[0] : ""
+  setupRestingHr.value = data.resting_heart_rate ? String(data.resting_heart_rate).replace(/[^0-9]/g, "") : ""
+  setupGender.value = data.gender || "Male"
+  setupActivity.value = data.activity_level || "Moderate"
+  setupStatus.textContent = ""
 }
 
 // Same target-BPM formula as the Flutter app's calculateAlertThreshold():
 // target = restingHR + ((HRmax - restingHR) * activityFactor)
 function calculateTargetBpm() {
-  const age = Number(profileAge.value) || 30
-  const restingHr = Number(profileRestingHr.value) || 70
+  const age = Number(currentProfile && currentProfile.age) || 30
+  const restingHr = Number(currentProfile && String(currentProfile.resting_heart_rate).replace(/[^0-9]/g, "")) || 70
   const hrmax = 220 - age
-  const activity = (profileActivity.value || "moderate").toLowerCase()
+  const activity = ((currentProfile && currentProfile.activity_level) || "moderate").toLowerCase()
   const factor = activity === "high" ? 0.95 : activity === "low" ? 0.85 : 0.9
   return Math.round(restingHr + (hrmax - restingHr) * factor)
 }
@@ -673,8 +715,8 @@ async function finishDiagnosis() {
   const target = calculateTargetBpm()
   diagTargetBpm.textContent = `${target}`
 
-  const heightM = (Number(profileHeight.value) || 0) / 100
-  const weightKg = Number(profileWeight.value) || 0
+  const heightM = (Number(currentProfile && String(currentProfile.height).split(" ")[0]) || 0) / 100
+  const weightKg = Number(currentProfile && String(currentProfile.weight).split(" ")[0]) || 0
   const bmi = heightM > 0 ? weightKg / (heightM * heightM) : 0
 
   const statusLabel = diagMaxBpmSeen >= target ? "Optimal" : "Below Target"
