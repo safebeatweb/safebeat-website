@@ -1472,12 +1472,42 @@ body.console-open .console {
   color: var(--text);
 }
 
-.diagnostic-auth-card {
+.diagnostic-stage {
+  position: relative;
+}
+
+.diagnostic-content.diagnostic-locked {
+  filter: blur(6px);
+  pointer-events: none;
+  user-select: none;
+}
+
+.diagnostic-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 30px;
+}
+
+.diagnostic-overlay[hidden] {
+  display: none;
+}
+
+.diagnostic-overlay-card {
+  width: 100%;
   max-width: 420px;
   padding: 30px;
-  background: var(--pink-pale);
+  background: rgba(246, 236, 236, 0.97);
   border: 1px solid var(--line);
   border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, .15);
+}
+
+.diagnostic-overlay-card h3 {
+  margin: 0 0 6px;
+  font-size: 18px;
 }
 
 .diagnostic-auth-tabs {
@@ -1538,10 +1568,39 @@ body.console-open .console {
 }
 
 .diagnostic-auth-note {
-  margin: 18px 0 0;
+  margin: 12px 0 0;
   color: var(--text);
   font-size: 11px;
   line-height: 1.6;
+}
+
+.diagnostic-finish-btn {
+  width: 100%;
+  margin-top: 18px;
+}
+
+.diagnostic-app-link {
+  display: inline-flex;
+  margin-top: 6px;
+  font-size: 12px;
+}
+
+.tab-gear-btn {
+  margin-top: 20px;
+  padding: 10px 13px;
+  color: var(--text);
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  font-size: 11px;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+
+.tab-gear-btn:hover {
+  color: var(--pink-dark);
+  background: var(--pink-pale);
 }
 
 .diagnostic-profile-card,
