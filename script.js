@@ -518,6 +518,19 @@ const diagLiveSpo2 = document.getElementById("diag-live-spo2")
 const diagTimer = document.getElementById("diag-timer")
 const diagStartStopBtn = document.getElementById("diag-start-stop")
 const diagHistoryList = document.getElementById("diagnostic-history-list")
+const diagnosticResultCard = document.getElementById("diagnostic-result-card")
+const diagnosticResultBadge = document.getElementById("diagnostic-result-badge")
+const resultMaxBpm = document.getElementById("result-max-bpm")
+const resultTarget = document.getElementById("result-target")
+const resultSpo2 = document.getElementById("result-spo2")
+const resultBmi = document.getElementById("result-bmi")
+const diagnosticResultDismiss = document.getElementById("diagnostic-result-dismiss")
+
+if (diagnosticResultDismiss) {
+  diagnosticResultDismiss.addEventListener("click", () => {
+    diagnosticResultCard.hidden = true
+  })
+}
 
 let currentUser = null
 let currentProfile = null
@@ -751,6 +764,7 @@ function startDiagnosis() {
   diagStartStopBtn.textContent = "Stop diagnosis"
   diagMaxBpm.textContent = "0"
   diagTimer.textContent = "0 / 60"
+  if (diagnosticResultCard) diagnosticResultCard.hidden = true
 
   diagIntervalId = setInterval(() => {
     if (latestHeartRate !== null) {
@@ -803,7 +817,13 @@ async function finishDiagnosis() {
     }
   }
 
-  alert(`Diagnosis complete\n\nHighest BPM: ${diagMaxBpmSeen}\nTarget range: ${target}\nAvg oxygen: ${avgSpo2}%\nSystem BMI: ${bmi.toFixed(1)}\n\nSystem stability: ${statusLabel === "Optimal" ? "OPTIMAL" : "BELOW TARGET"}`)
+  resultMaxBpm.textContent = diagMaxBpmSeen
+  resultTarget.textContent = target
+  resultSpo2.textContent = `${avgSpo2}%`
+  resultBmi.textContent = bmi.toFixed(1)
+  diagnosticResultBadge.textContent = statusLabel === "Optimal" ? "Optimal" : "Below target"
+  diagnosticResultBadge.className = `step-badge risk-badge ${statusLabel === "Optimal" ? "risk-normal" : "risk-monitor"}`
+  diagnosticResultCard.hidden = false
 }
 
 function subscribeHistory() {
