@@ -193,7 +193,7 @@ chatForm.addEventListener("submit", async (event) => {
     addMessage(data.reply || "I could not answer that right now.", "bot-message")
   } catch (error) {
     loading.remove()
-    addMessage("The assistant is unavailable. Run ai.py and check the Groq key in .env.", "bot-message")
+    addMessage("The assistant is temporarily unavailable. Please try again later.", "bot-message")
   }
 
   question.disabled = false
@@ -322,7 +322,7 @@ if (runAnalysisButton) {
       })
     } catch (error) {
       analysisStatus.textContent =
-        "Could not reach the analysis service. Make sure ecg_analysis_api.py is running on port 5001."
+        "The analysis service is temporarily unavailable. Please try again shortly."
     } finally {
       runAnalysisButton.disabled = false
     }
@@ -377,7 +377,7 @@ async function runAutoAnalysis() {
   } catch (error) {
     autoBadge.textContent = "Analysis service offline"
     autoBadge.className = "risk-badge"
-    autoDetail.textContent = "Start ecg_analysis_api.py to enable continuous analysis."
+    autoDetail.textContent = "Continuous analysis is temporarily unavailable."
     latestArrhythmiaRisk = null
     runAlertSystem()
   }
