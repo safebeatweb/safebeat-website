@@ -1,6 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-app.js"
 import { getDatabase, limitToLast, onValue, query, ref, get as dbGet } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-database.js"
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-auth.js"
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, updatePassword } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-auth.js"
 import { getFirestore, doc, setDoc, getDoc, updateDoc, collection, addDoc, deleteDoc, query as fsQuery, orderBy, limit, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-firestore.js"
 
 const config = {
@@ -19,6 +19,27 @@ const config = {
 // Render service's real URL once it's live, e.g.
 // "https://safebeat-backend.onrender.com"
 const BACKEND_URL = "https://safebeat-backend.onrender.com"
+
+// Small safety helper: attaches a listener only if the element actually
+// exists on the page. This prevents one missing/renamed element ID from
+// crashing the entire script (and silently breaking every feature that
+// comes after it in the file) — instead it just logs a warning and the
+// rest of the page keeps working normally.
+function onClick(element, handler) {
+  if (!element) {
+    console.warn("SafeBeat: expected element not found, skipping its click handler.")
+    return
+  }
+  element.addEventListener("click", handler)
+}
+
+function onSubmit(element, handler) {
+  if (!element) {
+    console.warn("SafeBeat: expected form not found, skipping its submit handler.")
+    return
+  }
+  element.addEventListener("submit", handler)
+}
 
 const menu = document.getElementById("menu")
 const nav = document.getElementById("nav")
@@ -486,6 +507,9 @@ const setupActivity = document.getElementById("setup-activity")
 const setupFetchHrBtn = document.getElementById("setup-fetch-hr")
 const setupStatus = document.getElementById("setup-status")
 const setupFinishBtn = document.getElementById("setup-finish")
+const setupPasswordSection = document.getElementById("setup-password-section")
+const setupNewPassword = document.getElementById("setup-new-password")
+const setupLogoutBtn = document.getElementById("setup-logout")
 
 const diagTargetBpm = document.getElementById("diag-target-bpm")
 const diagLiveBpm = document.getElementById("diag-live-bpm")
@@ -505,6 +529,8 @@ let diagSpo2Readings = []
 let diagIntervalId = null
 let historyUnsubscribe = null
 
+let isEditingExistingProfile = false
+
 function showAuthStep() {
   authStep.hidden = false
   profileStep.hidden = true
@@ -512,11 +538,18 @@ function showAuthStep() {
   diagContent.classList.add("diagnostic-locked")
 }
 
-function showProfileStep() {
+function showProfileStep(isEditing) {
+  isEditingExistingProfile = !!isEditing
   authStep.hidden = true
   profileStep.hidden = false
   diagOverlay.hidden = false
   diagContent.classList.add("diagnostic-locked")
+
+  // Password change + logout only make sense when reopening an existing
+  // profile via the gear icon — not during first-time register setup.
+  setupPasswordSection.hidden = !isEditingExistingProfile
+  setupLogoutBtn.hidden = !isEditingExistingProfile
+  setupNewPassword.value = ""
 }
 
 function showUnlocked() {
@@ -538,6 +571,24 @@ if (tabLoginBtn) {
     registerForm.hidden = false
     loginForm.hidden = true
   })
+
+  // Show/hide password toggles — shared helper for every password field
+  // on the login, register, and profile-edit forms.
+  function wirePasswordToggle(toggleId, inputId) {
+    const toggleBtn = document.getElementById(toggleId)
+    const input = document.getElementById(inputId)
+    if (!toggleBtn || !input) return
+    toggleBtn.addEventListener("click", () => {
+      const showing = input.type === "text"
+      input.type = showing ? "password" : "text"
+      toggleBtn.textContent = showing ? "👁" : "🙈"
+      toggleBtn.title = showing ? "Show password" : "Hide password"
+    })
+  }
+
+  wirePasswordToggle("login-password-toggle", "login-password")
+  wirePasswordToggle("register-password-toggle", "register-password")
+  wirePasswordToggle("setup-password-toggle", "setup-new-password")
 
   loginForm.addEventListener("submit", async (event) => {
     event.preventDefault()
@@ -580,13 +631,15 @@ if (tabLoginBtn) {
   editProfileBtn.addEventListener("click", () => {
     if (!currentUser) return
     populateProfileStepFields(currentProfile || {})
-    showProfileStep()
+    showProfileStep(true)
   })
 
   setupFetchHrBtn.addEventListener("click", async () => {
     const snapshot = await dbGet(ref(database, "HeartRate"))
     if (snapshot.exists()) setupRestingHr.value = snapshot.val()
   })
+
+  setupLogoutBtn.addEventListener("click", () => signOut(auth))
 
   setupFinishBtn.addEventListener("click", async () => {
     if (!currentUser) return
@@ -602,7 +655,21 @@ if (tabLoginBtn) {
       }
       await updateDoc(doc(firestore, "users", currentUser.uid), profileData)
       currentProfile = { ...currentProfile, ...profileData }
+
+      // Optional password change — only attempted if a new password was
+      // actually typed in, so leaving it blank keeps the current one.
+      if (setupNewPassword.value) {
+        try {
+          await updatePassword(currentUser, setupNewPassword.value)
+        } catch (passwordError) {
+          setupStatus.textContent = "Profile saved, but password could not be changed — please log out and back in, then try again."
+          setupNewPassword.value = ""
+          return
+        }
+      }
+
       setupStatus.textContent = ""
+      setupNewPassword.value = ""
       showUnlocked()
     } catch (error) {
       setupStatus.textContent = "Could not save profile."
@@ -621,7 +688,7 @@ if (tabLoginBtn) {
       if (!currentProfile.age) {
         // New/incomplete profile (fresh register) -> one-time setup step.
         populateProfileStepFields(currentProfile)
-        showProfileStep()
+        showProfileStep(false)
       } else {
         showUnlocked()
       }

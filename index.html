@@ -91,7 +91,7 @@
     </section>
 
     <section class="contact" id="contact">
-      <div class="contact-copy"><p class="eyebrow">Contact us</p><h2>Let’s build safer sport together.</h2><p>Have a question, feedback, or an opportunity for SafeBeat? Send us a message.</p><div class="founders"><p><strong>Amine</strong><span>Co-founder</span><a href="/cdn-cgi/l/email-protection#5d3c303433386b32282f3c3a3433341d3a303c3431733e3230"><span class="__cf_email__" data-cfemail="7e1f1317101b48110b0c1f191710173e19131f1712501d1113">[email&#160;protected]</span></a></p><p><strong>Youssef</strong><span>Co-founder</span><a href="/cdn-cgi/l/email-protection#c2bbadb7b1b1a7a4a0b0a3aaabaff6f6f782a5afa3abaeeca1adaf"><span class="__cf_email__" data-cfemail="a8d1c7dddbdbcdcecadac9c0c1c59c9c9de8cfc5c9c1c486cbc7c5">[email&#160;protected]</span></a></p></div></div>
+      <div class="contact-copy"><p class="eyebrow">Contact us</p><h2>Let’s build safer sport together.</h2><p>Have a question, feedback, or an opportunity for SafeBeat? Send us a message.</p><div class="founders"><p><strong>Amine</strong><span>Co-founder</span><a href="/cdn-cgi/l/email-protection#6405090d0a01520b111605030d0a0d240309050d084a070b09"><span class="__cf_email__" data-cfemail="13727e7a7d76257c666172747a7d7a53747e727a7f3d707c7e">[email&#160;protected]</span></a></p><p><strong>Youssef</strong><span>Co-founder</span><a href="/cdn-cgi/l/email-protection#8cf5e3f9ffffe9eaeefeede4e5e1b8b8b9ccebe1ede5e0a2efe3e1"><span class="__cf_email__" data-cfemail="3d4452484e4e585b5f4f5c5554500909087d5a505c5451135e5250">[email&#160;protected]</span></a></p></div></div>
       <form id="contact-form">
         <div class="form-row"><label>Name<input name="name" required></label><label>Email<input name="email" type="email" required></label></div>
         <label>Subject<input name="subject"></label>
@@ -169,7 +169,12 @@
 
                   <form id="login-form" class="diagnostic-auth-form">
                     <label>Email address<input type="email" id="login-email" required></label>
-                    <label>Password<input type="password" id="login-password" required></label>
+                    <label>Password
+                      <span class="password-field">
+                        <input type="password" id="login-password" required>
+                        <button type="button" class="password-toggle" id="login-password-toggle" title="Show password">👁</button>
+                      </span>
+                    </label>
                     <div class="diagnostic-auth-status" id="login-status"></div>
                     <button class="button" type="submit">Login <span>→</span></button>
                   </form>
@@ -177,7 +182,12 @@
                   <form id="register-form" class="diagnostic-auth-form" hidden>
                     <label>Username<input type="text" id="register-username" required></label>
                     <label>Email address<input type="email" id="register-email" required></label>
-                    <label>Password<input type="password" id="register-password" required minlength="6"></label>
+                    <label>Password
+                      <span class="password-field">
+                        <input type="password" id="register-password" required minlength="6">
+                        <button type="button" class="password-toggle" id="register-password-toggle" title="Show password">👁</button>
+                      </span>
+                    </label>
                     <div class="diagnostic-auth-status" id="register-status"></div>
                     <button class="button" type="submit">Register unit <span>→</span></button>
                   </form>
@@ -211,8 +221,22 @@
                   <div class="diagnostic-profile-actions">
                     <button type="button" class="button" id="setup-fetch-hr">Fetch live resting BPM</button>
                   </div>
+
+                  <div class="diagnostic-password-section" id="setup-password-section" hidden>
+                    <p class="eyebrow">Change password</p>
+                    <label>New password
+                      <span class="password-field">
+                        <input type="password" id="setup-new-password" minlength="6" placeholder="Leave blank to keep current password">
+                        <button type="button" class="password-toggle" id="setup-password-toggle" title="Show password">👁</button>
+                      </span>
+                    </label>
+                  </div>
+
                   <div class="diagnostic-status" id="setup-status"></div>
-                  <button type="button" class="button diagnostic-finish-btn" id="setup-finish">Sync unit <span>→</span></button>
+                  <div class="diagnostic-profile-actions">
+                    <button type="button" class="button diagnostic-finish-btn" id="setup-finish">Sync unit <span>→</span></button>
+                    <button type="button" class="text-button diagnostic-logout-btn" id="setup-logout" hidden>Log out</button>
+                  </div>
                 </div>
 
               </div>
@@ -241,5 +265,5 @@
   <footer><a class="brand" href="#top">safe<span>beat</span></a><p>Advanced cardiac monitoring systems developed by students.</p><p>© 2025–26 SafeBeat</p></footer>
   <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script type="module" src="script.js"></script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a22f49134932bad5',t:'MTc4NTM2MTI2Mg=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a22f6ac1fe4e995b',t:'MTc4NTM2MjY0Mg=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
