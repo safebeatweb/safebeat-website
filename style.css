@@ -1472,3 +1472,217 @@ body.console-open .console {
   color: var(--text);
 }
 
+.diagnostic-auth-card {
+  max-width: 420px;
+  padding: 30px;
+  background: var(--pink-pale);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+}
+
+.diagnostic-auth-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 22px;
+}
+
+.diagnostic-auth-tab {
+  flex: 1;
+  padding: 10px;
+  color: var(--text);
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.diagnostic-auth-tab.active {
+  color: var(--white);
+  background: var(--pink-dark);
+  border-color: var(--pink-dark);
+}
+
+.diagnostic-auth-form {
+  display: grid;
+  gap: 16px;
+}
+
+.diagnostic-auth-form[hidden] {
+  display: none;
+}
+
+.diagnostic-auth-form label {
+  display: grid;
+  gap: 6px;
+  color: var(--text);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.diagnostic-auth-form input {
+  padding: 10px 12px;
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  border-radius: 8px;
+  font-size: 14px;
+  color: var(--ink);
+}
+
+.diagnostic-auth-status {
+  min-height: 16px;
+  color: var(--pink-dark);
+  font-size: 11px;
+}
+
+.diagnostic-auth-note {
+  margin: 18px 0 0;
+  color: var(--text);
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.diagnostic-profile-card,
+.diagnostic-test-card,
+.diagnostic-history {
+  max-width: 700px;
+  margin-bottom: 24px;
+  padding: 24px;
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+}
+
+.diagnostic-profile-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 18px;
+}
+
+.diagnostic-profile-heading h3 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.diagnostic-profile-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.diagnostic-profile-grid label {
+  display: grid;
+  gap: 6px;
+  color: var(--text);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.diagnostic-profile-grid input,
+.diagnostic-profile-grid select {
+  padding: 9px 12px;
+  background: var(--pink-pale);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-size: 13px;
+  color: var(--ink);
+}
+
+.diagnostic-profile-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.diagnostic-test-card .diagnostic-readout {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.diagnostic-test-card .diagnostic-readout > div {
+  text-align: center;
+}
+
+.diagnostic-test-card .diagnostic-readout small {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--text);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+}
+
+.diagnostic-test-card .diagnostic-readout strong {
+  display: block;
+  color: var(--pink-dark);
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.diagnostic-history-empty {
+  margin: 0;
+  color: var(--text);
+  font-size: 12px;
+}
+
+.diagnostic-history-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 16px;
+  margin-bottom: 10px;
+  background: var(--pink-pale);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+
+.diagnostic-history-item .history-left small {
+  display: block;
+  color: var(--text);
+  font-size: 10px;
+  margin-bottom: 2px;
+}
+
+.diagnostic-history-item .history-left strong {
+  font-size: 13px;
+}
+
+.diagnostic-history-item .history-right {
+  text-align: right;
+}
+
+.diagnostic-history-item .history-right strong {
+  display: block;
+  font-size: 15px;
+  color: var(--pink-dark);
+}
+
+.diagnostic-history-item .history-right span {
+  font-size: 11px;
+  color: var(--text);
+}
+
+.diagnostic-history-delete {
+  color: #a33843;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+@media (max-width: 650px) {
+  .diagnostic-profile-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .diagnostic-test-card .diagnostic-readout {
+    grid-template-columns: 1fr 1fr;
+  }
+}

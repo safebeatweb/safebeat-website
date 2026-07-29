@@ -1,5 +1,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-app.js"
-import { getDatabase, limitToLast, onValue, query, ref } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-database.js"
+import { getDatabase, limitToLast, onValue, query, ref, get as dbGet } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-database.js"
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-auth.js"
+import { getFirestore, doc, setDoc, getDoc, updateDoc, collection, addDoc, deleteDoc, query as fsQuery, orderBy, limit, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-firestore.js"
 
 const config = {
   apiKey: "AIzaSyAm2p01fVffl6FGh46J2xmMzjAA7D4Kl4k",
@@ -33,6 +35,9 @@ const contactForm = document.getElementById("contact-form")
 const formStatus = document.getElementById("form-status")
 
 let database
+let firebaseApp
+let auth
+let firestore
 let chart
 let dataBuffer = Array(150).fill(0)
 let lastSignal = 0
@@ -175,7 +180,10 @@ chatForm.addEventListener("submit", async (event) => {
 })
 
 try {
-  database = getDatabase(initializeApp(config))
+  firebaseApp = initializeApp(config)
+  database = getDatabase(firebaseApp)
+  auth = getAuth(firebaseApp)
+  firestore = getFirestore(firebaseApp)
 
   onValue(ref(database, "ECG/status"), (snapshot) => {
     const value = String(snapshot.val() || "").toLowerCase()
@@ -441,92 +449,298 @@ function runAlertSystem() {
   alertVerdictText.textContent = message
 }
 
-
 // ---------------------------------------------------------------------
-// Personalized diagnostic tab. Calculates each athlete's theoretical
-// max heart rate (HRmax = 220 - age, same formula used on the poster's
-// Personalized section), tracks the highest live BPM seen since the
-// tab was opened, and compares it against the same %HRmax zone table
-// from fig12 to show which training zone the athlete is currently in.
+// Personalized diagnostic tab — login-gated, matching the same Firebase
+// Auth + Firestore logic as the SafeBeat Flutter app (same account,
+// same "users/{uid}" profile fields, same target-BPM/BMI/history math).
 // ---------------------------------------------------------------------
-const diagnosticAgeInput = document.getElementById("diagnostic-age")
-const diagnosticHrmax = document.getElementById("diagnostic-hrmax")
-const diagnosticLiveBpm = document.getElementById("diagnostic-live-bpm")
-const diagnosticMaxBpm = document.getElementById("diagnostic-max-bpm")
-const diagnosticPercent = document.getElementById("diagnostic-percent")
-const diagnosticZoneBadge = document.getElementById("diagnostic-zone-badge")
-const diagnosticZoneTitle = document.getElementById("diagnostic-zone-title")
-const diagnosticZoneDesc = document.getElementById("diagnostic-zone-desc")
-const diagnosticZoneRows = document.querySelectorAll(".diagnostic-zone-row")
+const diagAuthStatus = document.getElementById("diagnostic-auth-status")
+const diagLocked = document.getElementById("diagnostic-locked")
+const diagUnlocked = document.getElementById("diagnostic-unlocked")
 
-let maxBpmSeen = 0
+const tabLoginBtn = document.getElementById("tab-login")
+const tabRegisterBtn = document.getElementById("tab-register")
+const loginForm = document.getElementById("login-form")
+const registerForm = document.getElementById("register-form")
+const loginStatus = document.getElementById("login-status")
+const registerStatus = document.getElementById("register-status")
 
-// Same 5 zones as fig12 on the poster, in the same order.
-const HR_ZONES = [
-  { min: 50, max: 60, label: "Very light", tier: "normal", desc: "Recovery and warm-up." },
-  { min: 60, max: 70, label: "Light", tier: "normal", desc: "Endurance training." },
-  { min: 70, max: 80, label: "Moderate", tier: "normal", desc: "Endurance training." },
-  { min: 80, max: 90, label: "Hard", tier: "monitor", desc: "Increased performance capacity." },
-  { min: 90, max: 100, label: "Maximum effort", tier: "alert", desc: "High-intensity training and sprints — monitor closely." },
-]
+const profileAge = document.getElementById("profile-age")
+const profileHeight = document.getElementById("profile-height")
+const profileWeight = document.getElementById("profile-weight")
+const profileRestingHr = document.getElementById("profile-resting-hr")
+const profileGender = document.getElementById("profile-gender")
+const profileActivity = document.getElementById("profile-activity")
+const profileSaveBtn = document.getElementById("profile-save")
+const profileFetchHrBtn = document.getElementById("profile-fetch-hr")
+const profileSaveStatus = document.getElementById("profile-save-status")
+const diagnosticLogoutBtn = document.getElementById("diagnostic-logout")
 
-function updateDiagnostics() {
-  if (!diagnosticHrmax) return // only present on the Diagnostic tab
+const diagTargetBpm = document.getElementById("diag-target-bpm")
+const diagLiveBpm = document.getElementById("diag-live-bpm")
+const diagMaxBpm = document.getElementById("diag-max-bpm")
+const diagLiveSpo2 = document.getElementById("diag-live-spo2")
+const diagTimer = document.getElementById("diag-timer")
+const diagStartStopBtn = document.getElementById("diag-start-stop")
+const diagHistoryList = document.getElementById("diagnostic-history-list")
 
-  if (latestHeartRate !== null && latestHeartRate > maxBpmSeen) {
-    maxBpmSeen = latestHeartRate
-  }
+let currentUser = null
+let diagRunning = false
+let diagElapsedSeconds = 0
+let diagMaxBpmSeen = 0
+let diagBpmReadings = []
+let diagSpo2Readings = []
+let diagIntervalId = null
+let historyUnsubscribe = null
 
-  diagnosticLiveBpm.textContent = latestHeartRate === null ? "--" : latestHeartRate
-  diagnosticMaxBpm.textContent = maxBpmSeen === 0 ? "--" : maxBpmSeen
+if (tabLoginBtn) {
+  tabLoginBtn.addEventListener("click", () => {
+    tabLoginBtn.classList.add("active")
+    tabRegisterBtn.classList.remove("active")
+    loginForm.hidden = false
+    registerForm.hidden = true
+  })
 
-  const age = Number(diagnosticAgeInput.value)
-  diagnosticZoneRows.forEach((row) => row.classList.remove("active"))
+  tabRegisterBtn.addEventListener("click", () => {
+    tabRegisterBtn.classList.add("active")
+    tabLoginBtn.classList.remove("active")
+    registerForm.hidden = false
+    loginForm.hidden = true
+  })
 
-  if (!age || age <= 0) {
-    diagnosticHrmax.textContent = "--"
-    diagnosticPercent.textContent = "--"
-    diagnosticZoneBadge.textContent = "--"
-    diagnosticZoneBadge.className = "step-badge risk-badge"
-    diagnosticZoneTitle.textContent = "Enter age to see the athlete's current training zone"
-    diagnosticZoneDesc.textContent = "Compares the live heart rate against the theoretical maximum, using the same zone table as fig12."
-    return
-  }
+  loginForm.addEventListener("submit", async (event) => {
+    event.preventDefault()
+    loginStatus.textContent = "Signing in..."
+    try {
+      await signInWithEmailAndPassword(auth, document.getElementById("login-email").value.trim(), document.getElementById("login-password").value)
+      loginStatus.textContent = ""
+      loginForm.reset()
+    } catch (error) {
+      loginStatus.textContent = "Invalid credentials. Please try again."
+    }
+  })
 
-  const hrmax = 220 - age
-  diagnosticHrmax.textContent = `${hrmax} BPM`
+  registerForm.addEventListener("submit", async (event) => {
+    event.preventDefault()
+    registerStatus.textContent = "Creating your unit..."
+    const username = document.getElementById("register-username").value.trim()
+    const email = document.getElementById("register-email").value.trim()
+    const password = document.getElementById("register-password").value
 
-  if (latestHeartRate === null) {
-    diagnosticPercent.textContent = "--"
-    diagnosticZoneBadge.textContent = "No data"
-    diagnosticZoneBadge.className = "step-badge risk-badge risk-monitor"
-    diagnosticZoneTitle.textContent = "Waiting for a live heart rate reading"
-    diagnosticZoneDesc.textContent = "Once HeartRate starts streaming from Firebase, the athlete's current zone will show here."
-    return
-  }
+    try {
+      const credential = await createUserWithEmailAndPassword(auth, email, password)
+      await setDoc(doc(firestore, "users", credential.user.uid), {
+        username,
+        email,
+        createdAt: serverTimestamp()
+      })
+      registerStatus.textContent = ""
+      registerForm.reset()
+    } catch (error) {
+      registerStatus.textContent = error.message.includes("email-already-in-use")
+        ? "That email is already registered — try logging in instead."
+        : "Could not register. " + (error.message || "")
+    }
+  })
 
-  const percent = Math.round((latestHeartRate / hrmax) * 100)
-  diagnosticPercent.textContent = `${percent}%`
+  diagnosticLogoutBtn.addEventListener("click", () => signOut(auth))
 
-  let zone = null
-  if (percent < 50) {
-    zone = { label: "Below training range", tier: "normal", desc: "Resting or very light activity — below the tracked training zones." }
-  } else if (percent > 100) {
-    zone = { label: "Above HRmax", tier: "alert", desc: "Exceeds the estimated maximum — stop activity and assess immediately." }
-  } else {
-    zone = HR_ZONES.find((z) => percent >= z.min && percent <= z.max) || HR_ZONES[HR_ZONES.length - 1]
-    const rowIndex = HR_ZONES.indexOf(zone)
-    if (rowIndex >= 0 && diagnosticZoneRows[rowIndex]) diagnosticZoneRows[rowIndex].classList.add("active")
-  }
+  onAuthStateChanged(auth, async (user) => {
+    currentUser = user
 
-  diagnosticZoneBadge.textContent = zone.label
-  diagnosticZoneBadge.className = `step-badge risk-badge risk-${zone.tier}`
-  diagnosticZoneTitle.textContent = `${zone.label} — ${percent}% of HRmax`
-  diagnosticZoneDesc.textContent = zone.desc
+    if (user) {
+      diagAuthStatus.textContent = "Signed in"
+      diagLocked.hidden = true
+      diagUnlocked.hidden = false
+      await loadProfile()
+      subscribeHistory()
+    } else {
+      diagAuthStatus.textContent = "Not signed in"
+      diagLocked.hidden = false
+      diagUnlocked.hidden = true
+      stopDiagnosisTimer()
+      if (historyUnsubscribe) historyUnsubscribe()
+    }
+  })
 }
 
-if (diagnosticAgeInput) {
-  diagnosticAgeInput.addEventListener("input", updateDiagnostics)
-  updateDiagnostics()
-  setInterval(updateDiagnostics, 2000)
+async function loadProfile() {
+  if (!currentUser) return
+  const snapshot = await getDoc(doc(firestore, "users", currentUser.uid))
+  if (!snapshot.exists()) return
+  const data = snapshot.data()
+
+  if (data.age) profileAge.value = data.age
+  if (data.resting_heart_rate) profileRestingHr.value = String(data.resting_heart_rate).replace(/[^0-9]/g, "")
+  if (data.gender) profileGender.value = data.gender
+  if (data.activity_level) profileActivity.value = data.activity_level
+
+  // height/weight are stored as "170 cm" / "65 kg" strings in the app, same split logic
+  if (data.height) profileHeight.value = String(data.height).split(" ")[0]
+  if (data.weight) profileWeight.value = String(data.weight).split(" ")[0]
+}
+
+if (profileSaveBtn) {
+  profileSaveBtn.addEventListener("click", async () => {
+    if (!currentUser) return
+    profileSaveStatus.textContent = "Saving..."
+    try {
+      await updateDoc(doc(firestore, "users", currentUser.uid), {
+        age: profileAge.value,
+        height: `${profileHeight.value} cm`,
+        weight: `${profileWeight.value} kg`,
+        resting_heart_rate: profileRestingHr.value,
+        gender: profileGender.value,
+        activity_level: profileActivity.value
+      })
+      profileSaveStatus.textContent = "Profile saved."
+      setTimeout(() => { profileSaveStatus.textContent = "" }, 2500)
+    } catch (error) {
+      profileSaveStatus.textContent = "Could not save profile."
+    }
+  })
+
+  profileFetchHrBtn.addEventListener("click", async () => {
+    const snapshot = await dbGet(ref(database, "HeartRate"))
+    if (snapshot.exists()) profileRestingHr.value = snapshot.val()
+  })
+}
+
+// Same target-BPM formula as the Flutter app's calculateAlertThreshold():
+// target = restingHR + ((HRmax - restingHR) * activityFactor)
+function calculateTargetBpm() {
+  const age = Number(profileAge.value) || 30
+  const restingHr = Number(profileRestingHr.value) || 70
+  const hrmax = 220 - age
+  const activity = (profileActivity.value || "moderate").toLowerCase()
+  const factor = activity === "high" ? 0.95 : activity === "low" ? 0.85 : 0.9
+  return Math.round(restingHr + (hrmax - restingHr) * factor)
+}
+
+function stopDiagnosisTimer() {
+  diagRunning = false
+  if (diagIntervalId) clearInterval(diagIntervalId)
+  diagIntervalId = null
+}
+
+if (diagStartStopBtn) {
+  diagStartStopBtn.addEventListener("click", () => {
+    if (diagRunning) {
+      finishDiagnosis()
+    } else {
+      startDiagnosis()
+    }
+  })
+}
+
+function startDiagnosis() {
+  diagRunning = true
+  diagElapsedSeconds = 0
+  diagMaxBpmSeen = 0
+  diagBpmReadings = []
+  diagSpo2Readings = []
+  diagStartStopBtn.textContent = "Stop diagnosis"
+  diagMaxBpm.textContent = "0"
+  diagTimer.textContent = "0 / 60"
+
+  diagIntervalId = setInterval(() => {
+    if (latestHeartRate !== null) {
+      diagBpmReadings.push(latestHeartRate)
+      if (latestHeartRate > diagMaxBpmSeen) diagMaxBpmSeen = latestHeartRate
+      diagLiveBpm.textContent = latestHeartRate
+      diagMaxBpm.textContent = diagMaxBpmSeen
+    }
+    if (latestSpO2 !== null) {
+      diagSpo2Readings.push(latestSpO2)
+      diagLiveSpo2.textContent = `${latestSpO2}%`
+    }
+
+    diagElapsedSeconds += 1
+    diagTimer.textContent = `${diagElapsedSeconds} / 60`
+
+    if (diagElapsedSeconds >= 60) finishDiagnosis()
+  }, 1000)
+}
+
+async function finishDiagnosis() {
+  stopDiagnosisTimer()
+  diagStartStopBtn.textContent = "Start diagnosis"
+
+  const avgSpo2 = diagSpo2Readings.length
+    ? Math.round(diagSpo2Readings.reduce((a, b) => a + b, 0) / diagSpo2Readings.length)
+    : (latestSpO2 || 0)
+
+  const target = calculateTargetBpm()
+  diagTargetBpm.textContent = `${target}`
+
+  const heightM = (Number(profileHeight.value) || 0) / 100
+  const weightKg = Number(profileWeight.value) || 0
+  const bmi = heightM > 0 ? weightKg / (heightM * heightM) : 0
+
+  const statusLabel = diagMaxBpmSeen >= target ? "Optimal" : "Below Target"
+
+  if (currentUser) {
+    try {
+      await addDoc(collection(firestore, "users", currentUser.uid, "history"), {
+        date: serverTimestamp(),
+        max_bpm: diagMaxBpmSeen,
+        avg_spo2: avgSpo2,
+        target_bpm: target,
+        bmi,
+        status: statusLabel
+      })
+    } catch (error) {
+      // history save failing shouldn't block showing the result
+    }
+  }
+
+  alert(`Diagnosis complete\n\nHighest BPM: ${diagMaxBpmSeen}\nTarget range: ${target}\nAvg oxygen: ${avgSpo2}%\nSystem BMI: ${bmi.toFixed(1)}\n\nSystem stability: ${statusLabel === "Optimal" ? "OPTIMAL" : "BELOW TARGET"}`)
+}
+
+function subscribeHistory() {
+  if (!currentUser) return
+  if (historyUnsubscribe) historyUnsubscribe()
+
+  const historyQuery = fsQuery(
+    collection(firestore, "users", currentUser.uid, "history"),
+    orderBy("date", "desc"),
+    limit(20)
+  )
+
+  historyUnsubscribe = onSnapshot(historyQuery, (snapshot) => {
+    if (snapshot.empty) {
+      diagHistoryList.innerHTML = `<p class="diagnostic-history-empty">No sessions recorded.</p>`
+      return
+    }
+
+    diagHistoryList.innerHTML = ""
+    snapshot.forEach((docSnap) => {
+      const data = docSnap.data()
+      const date = data.date && data.date.toDate ? data.date.toDate() : new Date()
+      const timeLabel = `${date.getDate()}/${date.getMonth() + 1} • ${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`
+
+      const item = document.createElement("div")
+      item.className = "diagnostic-history-item"
+      item.innerHTML = `
+        <div class="history-left">
+          <small>${timeLabel}</small>
+          <strong style="color: ${data.status === "Optimal" ? "#217242" : "var(--pink-dark)"}">${data.status || "--"}</strong>
+          <div style="color: var(--text); font-size: 10px; margin-top: 4px;">BMI: ${(data.bmi || 0).toFixed(1)} | Target: ${data.target_bpm ?? "--"}</div>
+        </div>
+        <div class="history-right">
+          <strong>${data.max_bpm ?? "--"} BPM</strong>
+          <span>O2: ${data.avg_spo2 ?? "--"}%</span>
+        </div>
+        <button class="diagnostic-history-delete" title="Delete">✕</button>
+      `
+      item.querySelector(".diagnostic-history-delete").addEventListener("click", async () => {
+        try {
+          await deleteDoc(doc(firestore, "users", currentUser.uid, "history", docSnap.id))
+        } catch (error) {
+          // ignore delete failure, snapshot listener will just keep showing it
+        }
+      })
+      diagHistoryList.appendChild(item)
+    })
+  })
 }

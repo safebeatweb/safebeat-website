@@ -91,7 +91,7 @@
     </section>
 
     <section class="contact" id="contact">
-      <div class="contact-copy"><p class="eyebrow">Contact us</p><h2>Let’s build safer sport together.</h2><p>Have a question, feedback, or an opportunity for SafeBeat? Send us a message.</p><div class="founders"><p><strong>Amine</strong><span>Co-founder</span><a href="mailto:amine6ouragini@gmail.com">amine6ouragini@gmail.com</a></p><p><strong>Youssef</strong><span>Co-founder</span><a href="mailto:youssefbrahim445@gmail.com">youssefbrahim445@gmail.com</a></p></div></div>
+      <div class="contact-copy"><p class="eyebrow">Contact us</p><h2>Let’s build safer sport together.</h2><p>Have a question, feedback, or an opportunity for SafeBeat? Send us a message.</p><div class="founders"><p><strong>Amine</strong><span>Co-founder</span><a href="/cdn-cgi/l/email-protection#92f3fffbfcf7a4fde7e0f3f5fbfcfbd2f5fff3fbfebcf1fdff"><span class="__cf_email__" data-cfemail="1f7e7276717a29706a6d7e787671765f78727e7673317c7072">[email&#160;protected]</span></a></p><p><strong>Youssef</strong><span>Co-founder</span><a href="/cdn-cgi/l/email-protection#641d0b11171701020616050c0d09505051240309050d084a070b09"><span class="__cf_email__" data-cfemail="b1c8dec4c2c2d4d7d3c3d0d9d8dc858584f1d6dcd0d8dd9fd2dedc">[email&#160;protected]</span></a></p></div></div>
       <form id="contact-form">
         <div class="form-row"><label>Name<input name="name" required></label><label>Email<input name="email" type="email" required></label></div>
         <label>Subject<input name="subject"></label>
@@ -135,34 +135,85 @@
           </div>
         </section>
         <section class="console-tab" id="diagnostic">
-          <div class="console-heading"><div><p class="eyebrow">Performance diagnostic</p><h2>Personalized diagnostics</h2></div><p>HRmax = 220 − age</p></div>
-          <div class="diagnostic-panel">
-            <div class="diagnostic-input-row">
-              <label class="diagnostic-age-label">Athlete age
-                <input type="number" id="diagnostic-age" min="8" max="90" placeholder="e.g. 20">
-              </label>
-              <div class="diagnostic-readout">
-                <div><small>Theoretical HRmax</small><strong id="diagnostic-hrmax">--</strong></div>
-                <div><small>Live BPM</small><strong id="diagnostic-live-bpm">--</strong></div>
-                <div><small>Max BPM reached</small><strong id="diagnostic-max-bpm">--</strong></div>
-                <div><small>% of HRmax</small><strong id="diagnostic-percent">--</strong></div>
+          <div class="console-heading"><div><p class="eyebrow">Performance diagnostic</p><h2>Personalized diagnostics</h2></div><p id="diagnostic-auth-status">Not signed in</p></div>
+
+          <div class="diagnostic-panel" id="diagnostic-locked">
+            <div class="diagnostic-auth-card">
+              <div class="diagnostic-auth-tabs">
+                <button type="button" class="diagnostic-auth-tab active" id="tab-login" data-auth-tab="login">Login</button>
+                <button type="button" class="diagnostic-auth-tab" id="tab-register" data-auth-tab="register">Register unit</button>
               </div>
-            </div>
 
-            <div class="diagnostic-status" id="diagnostic-status">
-              <span class="step-badge risk-badge" id="diagnostic-zone-badge">--</span>
-              <div><strong id="diagnostic-zone-title">Enter age to see the athlete's current training zone</strong><p id="diagnostic-zone-desc">Compares the live heart rate against the theoretical maximum, using the same zone table as fig12.</p></div>
-            </div>
+              <form id="login-form" class="diagnostic-auth-form">
+                <label>Email address<input type="email" id="login-email" required></label>
+                <label>Password<input type="password" id="login-password" required></label>
+                <div class="diagnostic-auth-status" id="login-status"></div>
+                <button class="button" type="submit">Login <span>→</span></button>
+              </form>
 
-            <div class="diagnostic-zone-table">
-              <div class="diagnostic-zone-row"><span>50–60%</span><span>Very light</span><span>Recovery and warm-up</span></div>
-              <div class="diagnostic-zone-row"><span>60–70%</span><span>Light</span><span>Endurance training</span></div>
-              <div class="diagnostic-zone-row"><span>70–80%</span><span>Moderate</span><span>Endurance training</span></div>
-              <div class="diagnostic-zone-row"><span>80–90%</span><span>Hard</span><span>Increased performance capacity</span></div>
-              <div class="diagnostic-zone-row"><span>90–100%</span><span>Maximum effort</span><span>High-intensity training and sprints</span></div>
+              <form id="register-form" class="diagnostic-auth-form" hidden>
+                <label>Username<input type="text" id="register-username" required></label>
+                <label>Email address<input type="email" id="register-email" required></label>
+                <label>Password<input type="password" id="register-password" required minlength="6"></label>
+                <div class="diagnostic-auth-status" id="register-status"></div>
+                <button class="button" type="submit">Register unit <span>→</span></button>
+              </form>
+
+              <p class="diagnostic-auth-note">Diagnostics unlock once you sign in, so results and history are tied to your own athlete profile — same account works on the SafeBeat mobile app.</p>
             </div>
           </div>
-          <div class="console-card"><p class="eyebrow">Full diagnostics app</p><h2>Advanced diagnostics are available in the SafeBeat mobile app.</h2><p>The same personalised diagnostics run continuously and offline-ready in the SafeBeat Android app.</p><a class="button" href="https://drive.usercontent.google.com/download?id=1vPsaFwz7yecyXuG2KvGwY-EwmWIMuSLJ&export=download&authuser=0">Download the app <span>→</span></a></div>
+
+          <div class="diagnostic-panel" id="diagnostic-unlocked" hidden>
+            <div class="diagnostic-profile-card">
+              <div class="diagnostic-profile-heading">
+                <h3>Athlete profile</h3>
+                <button type="button" class="text-button" id="diagnostic-logout">Log out</button>
+              </div>
+              <div class="diagnostic-profile-grid">
+                <label>Age<input type="number" id="profile-age" min="8" max="90"></label>
+                <label>Height (cm)<input type="number" id="profile-height" min="80" max="230"></label>
+                <label>Weight (kg)<input type="number" id="profile-weight" min="20" max="250"></label>
+                <label>Resting heart rate (BPM)<input type="number" id="profile-resting-hr" min="30" max="120"></label>
+                <label>Gender
+                  <select id="profile-gender">
+                    <option>Male</option>
+                    <option>Female</option>
+                    <option>Other</option>
+                  </select>
+                </label>
+                <label>Activity level
+                  <select id="profile-activity">
+                    <option>Low</option>
+                    <option selected>Moderate</option>
+                    <option>High</option>
+                  </select>
+                </label>
+              </div>
+              <div class="diagnostic-profile-actions">
+                <button type="button" class="button" id="profile-save">Save profile <span>→</span></button>
+                <button type="button" class="nav-button" id="profile-fetch-hr">Fetch live resting BPM</button>
+              </div>
+              <div class="diagnostic-status" id="profile-save-status"></div>
+            </div>
+
+            <div class="diagnostic-test-card">
+              <div class="diagnostic-readout">
+                <div><small>Target BPM</small><strong id="diag-target-bpm">--</strong></div>
+                <div><small>Live BPM</small><strong id="diag-live-bpm">--</strong></div>
+                <div><small>Max BPM reached</small><strong id="diag-max-bpm">0</strong></div>
+                <div><small>Oxygen</small><strong id="diag-live-spo2">--</strong></div>
+                <div><small>Timer</small><strong id="diag-timer">0 / 60</strong></div>
+              </div>
+              <button type="button" class="button" id="diag-start-stop">Start diagnosis <span>→</span></button>
+            </div>
+
+            <div class="diagnostic-history">
+              <p class="eyebrow">Performance history</p>
+              <div id="diagnostic-history-list"><p class="diagnostic-history-empty">No sessions recorded.</p></div>
+            </div>
+          </div>
+
+          <div class="console-card"><p class="eyebrow">Full diagnostics app</p><h2>The same live diagnostics also run in the SafeBeat mobile app.</h2><p>Sign in with the same account to see your history sync across both.</p><a class="button" href="https://drive.usercontent.google.com/download?id=1vPsaFwz7yecyXuG2KvGwY-EwmWIMuSLJ&export=download&authuser=0">Download the app <span>→</span></a></div>
         </section>
         <section class="console-tab" id="analysis">
           <div class="console-heading"><div><p class="eyebrow">AI ECG analysis</p><h2>Arrhythmia detection</h2></div><p>Trained on MIT-BIH clinical data</p></div>
@@ -184,7 +235,7 @@
   </section>
 
   <footer><a class="brand" href="#top">safe<span>beat</span></a><p>Advanced cardiac monitoring systems developed by students.</p><p>© 2025–26 SafeBeat</p></footer>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script type="module" src="script.js"></script>
-</body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a22f0a3d4a380e6d',t:'MTc4NTM1ODY4OA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
