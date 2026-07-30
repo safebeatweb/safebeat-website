@@ -137,6 +137,18 @@ function openMonitor() {
   setTimeout(() => chart && chart.resize(), 100)
 }
 
+// Founder emails are assembled here in JavaScript, from a split
+// username/domain, instead of appearing as plain text in the page's
+// HTML. This avoids browser extensions or scanners that rewrite
+// visible email addresses into placeholder text like "[email
+// protected]" — since there's no complete address in the raw HTML for
+// them to find and "protect" in the first place.
+document.querySelectorAll(".founder-email").forEach((link) => {
+  const address = `${link.dataset.user}@${link.dataset.domain}`
+  link.href = `mailto:${address}`
+  link.textContent = address
+})
+
 menu.addEventListener("click", () => {
   const open = nav.classList.toggle("open")
   menu.textContent = open ? "Close" : "Menu"
